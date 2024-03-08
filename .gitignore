@@ -1,0 +1,4 @@
+/jenkins-data
+/bin
+*.ini
+prometheus-config/jenkins-token

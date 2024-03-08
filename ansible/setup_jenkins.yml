@@ -1,0 +1,23 @@
+---
+- name: Instalar o jenkins em um servidor Wildfly (JBOSS)
+  hosts: local
+  become: yes
+  vars:
+    VERSION: "{{  jenkins_version  }}"
+
+  tasks:
+    - name: Baixar o .war do Jenkins
+      get_url:
+        url: "https://get.jenkins.io/war-stable/{{ VERSION }}/jenkins.war"
+        dest: /tmp/jenkins.war
+
+    - name: Copia jenkins.war para /opt/wildfly/standalone/deployments
+      ansible.builtin.copy:
+        src: /tmp/jenkins.war 
+        dest: /opt/wildfly/standalone/deployments
+
+    - name: Reiniciar o Wildfly
+      ansible.builtin.service:
+        name: wildfly
+        state: restarted
+        daemon_reload: true

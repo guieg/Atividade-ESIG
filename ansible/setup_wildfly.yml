@@ -1,0 +1,89 @@
+---
+- name: Instalar o Wildfly em um servidor Debian
+  hosts: local
+  become: yes
+  vars:
+    VERSION: "{{  wildfly_version  }}"
+
+  tasks:
+    - name: Instalar o Java
+      apt:
+        name: default-jdk
+        state: present
+
+    - name: Baixar o Wildfly
+      get_url:
+        url: "https://github.com/wildfly/wildfly/releases/download/{{ VERSION }}/wildfly-{{ VERSION }}.tar.gz"
+        dest: /tmp/wildfly.tar.gz
+
+    - name: Extrair o Wildfly
+      ansible.builtin.unarchive:
+        src: /tmp/wildfly.tar.gz
+        dest: /opt
+        remote_src: yes
+
+    - name: Deleta /opt/wildfly antigo
+      command: rm -rf /opt/wildfly
+
+    - name: Move /opt/wildfly-{{ VERSION }} para /opt/wildfly
+      command: mv /opt/wildfly-{{ VERSION }} /opt/wildfly
+
+    - name: Definir permissões do Wildfly
+      file:
+        path: /opt/wildfly
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        recurse: true
+        
+    - name: Cria diretório '/etc/wildfly'
+      ansible.builtin.file:
+        path: /etc/wildfly
+        state: directory
+
+    - name: Copia arquivo wildfly.service para /etc/systemd/system/
+      ansible.builtin.copy:
+        src: /opt/wildfly/docs/contrib/scripts/systemd/wildfly.service 
+        dest: /etc/systemd/system/
+
+    - name: Copia arquivo launch.sh com permissão de execução
+      ansible.builtin.copy:
+        src: /opt/wildfly/docs/contrib/scripts/systemd/launch.sh
+        dest: /opt/wildfly/bin/
+        mode: a+x
+
+    - name: chmod +x /opt/wildfly/bin/*.sh
+      shell: chmod +x /opt/wildfly/bin/*.sh
+
+    - name: Copia arquivo de configuração wildfly.conf para /etc/wildfly/
+      ansible.builtin.copy:
+        src: /opt/wildfly/docs/contrib/scripts/systemd/wildfly.conf
+        dest: /etc/wildfly/
+
+    - name: Garante que gurpo "wildfly" exista
+      ansible.builtin.group:
+        name: wildfly
+        system: true
+        state: present
+
+    - name: Adiciona o usuário 'wildfly'
+      ansible.builtin.user:
+        name: wildfly
+        comment: wildfly
+        group: wildfly
+        system: true
+        shell: /sbin/nologin
+        home: /opt/wildfly
+
+    - name: Define /opt/wildfly como HOME de wildfly
+      file:
+        path: /opt/wildfly
+        owner: wildfly
+        group: wildfly
+        recurse: yes
+        
+
+    - name: Reiniciar o Wildfly
+      ansible.builtin.service:
+        name: wildfly
+        state: started
+        daemon_reload: true

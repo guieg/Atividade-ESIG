@@ -1,0 +1,20 @@
+
+global:
+  scrape_interval:     10s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: 'jenkins'
+    metrics_path: '/prometheus/'
+    scheme: http
+    tls_config:
+      insecure_skip_verify: true
+    bearer_token_file: /etc/prometheus/jenkins-token
+    static_configs:
+        - targets: ['jenkins:8080']
+    metric_relabel_configs:
+    - action: replace
+      source_labels: [exported_job]
+      target_label: jenkins_job
+    - action: labeldrop
+      regex: exported_job
